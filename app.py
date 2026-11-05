@@ -35,8 +35,6 @@ except FileNotFoundError:
     st.stop()
 
 st.title("Alerta temprana de riesgo académico")
-st.warning("Prototipo entrenado con datos SIMULADOS: los resultados "
-           "no corresponden a estudiantes reales.")
 if distinta_version:
     st.info("El modelo se entrenó con otra versión de scikit-learn; "
             "fije la misma versión en requirements.txt.")
