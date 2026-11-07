@@ -20,6 +20,38 @@ NOMBRES = {"Creditos_Acumulados": "Créditos acumulados",
     "Horas_Estudio_Sem": "Horas de estudio",
     "Nivel_Estres": "Nivel de estrés"}
 
+ACCIONES = {  # solo factores sobre los que se puede actuar
+    "Cursos_Desaprobados": "planificar la recuperación de los cursos desaprobados",
+    "Promedio_Ponderado": "reforzar los cursos con menor nota",
+    "Asistencia": "mejorar la asistencia a clases",
+    "Estado_Laboral": "organizar un horario compatible con el trabajo",
+    "Horas_Estudio_Sem": "aumentar las horas de estudio semanales",
+    "Nivel_Estres": "buscar apoyo en bienestar universitario para manejar el estrés",
+    "Soporte_Familiar": "acercarlo a los servicios de bienestar estudiantil",
+    "Conectividad": "gestionar acceso a internet o préstamo de equipos",
+    "Distancia_Uni_Km": "considerar el tiempo de traslado al organizar su horario",
+    "Creditos_Acumulados": "revisar su avance en el plan de estudios",
+    "Semestre_Actual": "revisar su avance en el plan de estudios"}
+
+def recomendacion(clase, prob, top):
+    acc = []
+    for c in top.index:
+        if top[c] > 0.01 and c in ACCIONES and ACCIONES[c] not in acc:
+            acc.append(ACCIONES[c])
+    if clase == 1:
+        texto = "El perfil presenta señales claras de riesgo. Se recomienda "
+        texto += (acc[0] + (f" y {acc[1]}" if len(acc) > 1 else "") + "."
+                  if acc else "revisar su situación académica cuanto antes.")
+        return "Seguimiento prioritario", texto, ROJO, "#FBEDEB"
+    if prob >= 0.35:
+        texto = ("No se clasifica en riesgo, pero está cerca del límite. Se recomienda "
+                 + (acc[0] if acc else "revisar su avance antes de fin de ciclo") + ".")
+        return "Seguimiento preventivo", texto, AMBAR, "#FBF4E6"
+    texto = "El perfil no muestra señales importantes de riesgo. "
+    texto += (f"Para mantenerlo así, se recomienda {acc[0]}." if acc
+              else "Se recomienda mantener su ritmo de estudio actual.")
+    return "Seguimiento regular", texto, VERDE, "#EAF4EE"
+
 CSS = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,700&family=Public+Sans:wght@400;500;600&display=swap');
@@ -56,6 +88,13 @@ h1, h2, h3, .serif {{ font-family: 'Literata', Georgia, serif !important; }}
 .estado {{ font-family: 'Literata', serif; font-size: 1.55rem;
   font-weight: 700; text-align: center; margin: -.4rem 0 .2rem 0; }}
 .sub {{ text-align: center; color: #5B6B73; font-size: .9rem; }}
+.reco {{ border-radius: 14px; padding: 1rem 1.15rem; margin-top: 1rem;
+  display: flex; gap: .85rem; align-items: flex-start; }}
+.reco .ic {{ flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%;
+  display: grid; place-items: center; }}
+.reco h4 {{ font-family: 'Literata', serif; font-size: 1.08rem; margin: 0 0 .25rem 0;
+  padding: 0; }}
+.reco p {{ margin: 0; font-size: .95rem; line-height: 1.5; color: #24343C; }}
 .nota {{ color: #6B7B83; font-size: .82rem; line-height: 1.45;
   margin-top: .8rem; }}
 .stButton button[kind="primary"] {{ background: {AMBAR}; color: {PETROLEO};
@@ -207,13 +246,21 @@ with der:
             st.markdown(f'<div class="estado" style="color:{color}">{texto}</div>'
                         '<div class="sub">Probabilidad estimada por el modelo '
                         '(valor orientativo)</div>', unsafe_allow_html=True)
+            titulo, texto_r, col_r, fondo_r = recomendacion(clase, prob, top)
+            st.markdown(f"""<div class="reco" style="background:{fondo_r}">
+              <div class="ic" style="background:{col_r}"><svg width="20" height="20"
+               viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/>
+               <path d="M5 4h11l-2 4 2 4H5"/></svg></div>
+              <div><h4 style="color:{col_r}">{titulo}</h4><p>{texto_r}</p></div>
+              </div>""", unsafe_allow_html=True)
             graf = pd.DataFrame({
                 "Variable": [NOMBRES.get(c, c) for c in top.index],
                 "Efecto": top.values,
                 "Sentido": ["Aumenta el riesgo" if v > 0 else "Reduce el riesgo"
                             for v in top.values]})
             st.markdown('<div class="serif" style="font-weight:700;color:#0F3B4C;'
-                        'margin-top:1rem;font-size:1.05rem">Factores que más influyen</div>',
+                        'margin-top:1.3rem;font-size:1.05rem">Factores que más influyen</div>',
                         unsafe_allow_html=True)
             st.altair_chart(alt.Chart(graf).mark_bar(cornerRadiusEnd=3).encode(
                 x=alt.X("Efecto:Q", title=None,
@@ -234,7 +281,3 @@ with der:
             st.markdown('<div class="estado" style="color:#5B6B73;font-size:1.2rem">'
                         'Complete el perfil y pulse «Evaluar riesgo»</div>',
                         unsafe_allow_html=True)
-        st.markdown('<div class="nota">Modelo: máquina de vectores de soporte con núcleo RBF. '
-                    'En la evaluación de prueba detectó 52 de 69 casos en riesgo '
-                    '(sensibilidad 0.754, AUC 0.810). Es una herramienta de apoyo '
-                    'y no reemplaza el criterio del docente.</div>', unsafe_allow_html=True)
