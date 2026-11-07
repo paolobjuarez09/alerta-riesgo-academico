@@ -162,9 +162,13 @@ def gauge(prob, color):
       <text x="260" y="160" text-anchor="middle" font-size="12" fill="#6B7B83">100 %</text>
     </svg>"""
 
-def opcion(etiqueta, opciones, defecto, clave):
-    v = st.segmented_control(etiqueta, list(opciones), default=defecto, key=clave)
-    return opciones[v if v is not None else defecto]
+FALTAN = []
+def opcion(etiqueta, opciones, clave):
+    v = st.segmented_control(etiqueta, list(opciones), default=None, key=clave)
+    if v is None:
+        FALTAN.append(etiqueta.strip("¿?"))
+        return None
+    return opciones[v]
 
 @st.cache_resource
 def cargar():
@@ -199,39 +203,39 @@ with izq:
     with st.container(key="perfil"):
         grupo("academica", "Rendimiento académico")
         a, b = st.columns(2)
-        x["Promedio_Ponderado"] = a.slider("Promedio ponderado (0-20)", 0.0, 20.0, 13.3, 0.1)
-        x["Cursos_Desaprobados"] = b.slider("Cursos desaprobados", 0, 8, 1)
-        x["Asistencia"] = a.slider("Asistencia (%)", 0, 100, 85)
-        x["Creditos_Acumulados"] = b.slider("Créditos acumulados", 0, 200, 77)
-        x["Semestre_Actual"] = a.slider("Semestre actual", 1, 10, 5)
+        x["Promedio_Ponderado"] = a.slider("Promedio ponderado (0-20)", 0.0, 20.0, 0.0, 0.1)
+        x["Cursos_Desaprobados"] = b.slider("Cursos desaprobados", 0, 8, 0)
+        x["Asistencia"] = a.slider("Asistencia (%)", 0, 100, 0)
+        x["Creditos_Acumulados"] = b.slider("Créditos acumulados", 0, 200, 0)
+        x["Semestre_Actual"] = a.slider("Semestre actual", 1, 10, 1)
         st.divider()
         grupo("demografica", "Datos personales")
         a, b = st.columns(2)
-        x["Edad"] = a.slider("Edad", 16, 30, 20)
-        x["Distancia_Uni_Km"] = b.slider("Distancia a la universidad (km)", 0.0, 30.0, 5.0, 0.5)
+        x["Edad"] = a.slider("Edad", 16, 30, 16)
+        x["Distancia_Uni_Km"] = b.slider("Distancia a la universidad (km)", 0.0, 30.0, 0.0, 0.5)
         with a:
-            x["Sexo"] = opcion("Sexo", {"Femenino": 0, "Masculino": 1}, "Femenino", "sexo")
+            x["Sexo"] = opcion("Sexo", {"Femenino": 0, "Masculino": 1}, "sexo")
         st.divider()
         grupo("socio", "Situación socioeconómica")
         a, b = st.columns(2)
         with a:
-            x["Estado_Laboral"] = opcion("¿Trabaja?", {"No": 0, "Sí": 1}, "No", "trabaja")
+            x["Estado_Laboral"] = opcion("¿Trabaja?", {"No": 0, "Sí": 1}, "trabaja")
             x["Conectividad"] = opcion("¿Tiene internet y equipo propio?",
-                                       {"No": 0, "Sí": 1}, "Sí", "conect")
+                                       {"No": 0, "Sí": 1}, "conect")
         with b:
             x["Procedencia_Escolar"] = opcion("Colegio de procedencia",
-                                              {"Privado": 0, "Público": 1}, "Público", "colegio")
-            x["Soporte_Familiar"] = st.slider("Soporte familiar (1 = bajo, 4 = alto)", 1, 4, 3)
+                                              {"Privado": 0, "Público": 1}, "colegio")
+            x["Soporte_Familiar"] = st.slider("Soporte familiar (1 = bajo, 4 = alto)", 1, 4, 1)
         st.divider()
         grupo("bienestar", "Hábitos y bienestar")
         a, b = st.columns(2)
-        x["Horas_Estudio_Sem"] = a.slider("Horas de estudio por semana", 0, 40, 14)
-        x["Nivel_Estres"] = b.slider("Nivel de estrés (1 = bajo, 4 = alto)", 1, 4, 2)
+        x["Horas_Estudio_Sem"] = a.slider("Horas de estudio por semana", 0, 40, 0)
+        x["Nivel_Estres"] = b.slider("Nivel de estrés (1 = bajo, 4 = alto)", 1, 4, 1)
 
 with der:
     with st.container(key="resultado"):
         evaluar = st.button("Evaluar riesgo", type="primary", width="stretch")
-        if evaluar:
+        if evaluar and not FALTAN:
             fila = pd.DataFrame([x])[list(ref.index)]
             clase = int(modelo.predict(fila)[0])
             prob = float(modelo.predict_proba(fila)[0, 1])
@@ -277,6 +281,8 @@ with der:
                         'un estudiante típico. En rojo, lo que aumenta el riesgo; en verde, '
                         'lo que lo reduce.</div>', unsafe_allow_html=True)
         else:
+            if evaluar:
+                st.warning("Falta seleccionar: " + ", ".join(FALTAN) + ".")
             st.markdown(gauge(None, "#9AA9B0"), unsafe_allow_html=True)
             st.markdown('<div class="estado" style="color:#5B6B73;font-size:1.2rem">'
                         'Complete el perfil y pulse «Evaluar riesgo»</div>',
